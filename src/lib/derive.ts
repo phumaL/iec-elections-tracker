@@ -22,7 +22,7 @@ import type {
 
 export const HISTORY_YEARS = [2000, 2006, 2011, 2016, 2021] as const;
 
-export type PartyMetric = 'support' | 'votes' | 'seats' | 'councils';
+export type PartyMetric = 'support' | 'votes' | 'seats' | 'councils' | 'name';
 
 export function partyId(party: PartyResult): string {
   return String(party.ID);
@@ -82,6 +82,8 @@ function metricValue(party: PartyResult, metric: PartyMetric): number {
       return partySeats(party);
     case 'councils':
       return partyCouncils(party);
+    case 'name':
+      return 0;
     case 'support':
     default:
       return partySupport(party);
@@ -104,6 +106,10 @@ export function sortParties(
 
       const seatsDifference = partySeats(right) - partySeats(left);
       if (seatsDifference !== 0) return seatsDifference;
+
+      if (metric === 'name') {
+        return left.Name.localeCompare(right.Name, 'en', { sensitivity: 'base' });
+      }
 
       return partyVotes(right) - partyVotes(left);
     });
@@ -236,6 +242,32 @@ export function votesCounted(value: {
 }
 
 /**
+ * Total valid votes cast in a municipality.
+ *
+ * The national snapshot only carries the leading party, but each party row
+ * records the municipality's overall `ValidVotesCast`, so we can recover the
+ * real total without downloading the 13 MB ward file. The full file is still
+ * needed for the complete party breakdown.
+ */
+export function municipalityVotesCast(
+  municipality: MunicipalityResult | null | undefined,
+): number {
+  if (!municipality) return 0;
+  const parties = municipality.PartyBallotResults ?? [];
+  if (parties.length === 0) return 0;
+
+  const fromRow = parties[0]?.ValidVotesCast;
+  if (typeof fromRow === 'number' && Number.isFinite(fromRow) && fromRow > 0) {
+    return fromRow;
+  }
+
+  return parties.reduce(
+    (total, party) => total + (party.TotalValidVotes ?? 0),
+    0,
+  );
+}
+
+/**
  * The live 2026 feed only contains municipalities that already have counted
  * votes. Reference data from the completed 2021 election fills in the rest, so
  * the UI can show every municipality and mark the ones still waiting.
@@ -312,6 +344,28 @@ export function getAllMunicipalities(
   );
 }
 
+export type MunicipalitySortMetric = 'name' | 'progress' | 'votes';
+
+export function sortMunicipalities(
+  municipalities: MunicipalityResult[] | undefined,
+  metric: MunicipalitySortMetric = 'name',
+): MunicipalityResult[] {
+  return [...(municipalities ?? [])].sort((left, right) => {
+    if (metric === 'progress') {
+      const difference = votesCounted(right) - votesCounted(left);
+      if (difference !== 0) return difference;
+    } else if (metric === 'votes') {
+      const difference =
+        municipalityVotesCast(right) - municipalityVotesCast(left);
+      if (difference !== 0) return difference;
+    }
+
+    return left.Municipality.localeCompare(right.Municipality, 'en', {
+      sensitivity: 'base',
+    });
+  });
+}
+
 export function getMunicipalitiesForProvince(
   national: NationalResult | null | undefined,
   provinceId: number | string,
@@ -352,10 +406,30 @@ export function getWardNumber(wardId: number | string): string {
   return String(number).padStart(3, '0');
 }
 
-export function sortWards(wards: WardResult[] | undefined): WardResult[] {
-  return [...(wards ?? [])].sort(
-    (left, right) => toFiniteNumber(left.WardID) - toFiniteNumber(right.WardID),
-  );
+export type WardSortMetric = 'number' | 'votes' | 'progress';
+
+export function sortWards(
+  wards: WardResult[] | undefined,
+  metric: WardSortMetric = 'number',
+): WardResult[] {
+  return [...(wards ?? [])].sort((left, right) => {
+    if (metric === 'progress') {
+      const difference = votesCounted(right) - votesCounted(left);
+      if (difference !== 0) return difference;
+    } else if (metric === 'votes') {
+      const leftVotes = (left.PartyBallotResults ?? []).reduce(
+        (total, party) => total + (party.TotalValidVotes ?? 0),
+        0,
+      );
+      const rightVotes = (right.PartyBallotResults ?? []).reduce(
+        (total, party) => total + (party.TotalValidVotes ?? 0),
+        0,
+      );
+      if (rightVotes !== leftVotes) return rightVotes - leftVotes;
+    }
+
+    return toFiniteNumber(left.WardID) - toFiniteNumber(right.WardID);
+  });
 }
 
 export interface HistoryIndex {

@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -15,6 +15,10 @@ import { LiveBadge } from '@/components/ui/LiveBadge';
 import { PartyLogo } from '@/components/ui/PartyLogo';
 import { PartyRow } from '@/components/ui/PartyRow';
 import { ProgressBar } from '@/components/ui/ProgressBar';
+import {
+  SegmentedControl,
+  type SegmentedOption,
+} from '@/components/ui/SegmentedControl';
 import { Screen } from '@/components/ui/Screen';
 import { SearchField } from '@/components/ui/SearchField';
 import { Section } from '@/components/ui/Section';
@@ -35,11 +39,13 @@ import {
   getMunicipalityCouncilStatus,
   getPreviousSupport,
   hasMunicipalityResults,
+  municipalityVotesCast,
   getWardNumber,
   partySeats,
   partySupport,
   sortParties,
   sortWards,
+  type PartyMetric,
   votesCounted,
 } from '@/lib/derive';
 import {
@@ -54,6 +60,21 @@ import { radius, spacing, useTheme } from '@/theme';
 import type { PartyMeta, WardResult } from '@/types/iec';
 
 const WARD_PAGE_SIZE = 25;
+
+type PartySort = Extract<PartyMetric, 'support' | 'votes' | 'name'>;
+type WardSort = 'number' | 'votes' | 'progress';
+
+const PARTY_SORTS: readonly SegmentedOption<PartySort>[] = [
+  { key: 'support', label: 'Support' },
+  { key: 'votes', label: 'Votes' },
+  { key: 'name', label: 'Name' },
+];
+
+const WARD_SORTS: readonly SegmentedOption<WardSort>[] = [
+  { key: 'number', label: 'Number' },
+  { key: 'votes', label: 'Votes' },
+  { key: 'progress', label: 'Progress' },
+];
 
 export default function MunicipalityScreen() {
   const theme = useTheme();
@@ -74,6 +95,18 @@ export default function MunicipalityScreen() {
   const [wardSearch, setWardSearch] = useState('');
   const [wardLimit, setWardLimit] = useState(WARD_PAGE_SIZE);
   const [expandedWards, setExpandedWards] = useState<Set<string>>(new Set());
+  const [partySort, setPartySort] = useState<PartySort>('support');
+  const [wardSort, setWardSort] = useState<WardSort>('number');
+
+  // Automatically fetch the full municipal file so the party standings show
+  // every contestant, not just the leading party from the national snapshot.
+  useEffect(() => {
+    if (!id) return;
+    if (wards.data && String(wards.data.MunicipalityID) === String(id)) return;
+    if (wards.loading) return;
+    void wards.load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, wards.data, wards.loading, wards.load]);
 
   const municipality = useMemo(() => {
     // Prefer the fetched municipality file: it carries the ward breakdown,
@@ -91,8 +124,8 @@ export default function MunicipalityScreen() {
   }, [national, id, wards.data]);
 
   const parties = useMemo(
-    () => sortParties(municipality?.PartyBallotResults, 'support'),
-    [municipality],
+    () => sortParties(municipality?.PartyBallotResults, partySort),
+    [municipality, partySort],
   );
 
   const council = useMemo(
@@ -102,7 +135,7 @@ export default function MunicipalityScreen() {
 
   const wardList = useMemo(() => {
     const search = wardSearch.trim();
-    const sorted = sortWards(wards.data?.WardResults);
+    const sorted = sortWards(wards.data?.WardResults, wardSort);
 
     if (!search) return sorted;
 
@@ -113,7 +146,7 @@ export default function MunicipalityScreen() {
       if (!digits) return true;
       return number.includes(digits) || String(ward.WardID).includes(digits);
     });
-  }, [wards.data, wardSearch]);
+  }, [wards.data, wardSearch, wardSort]);
 
   const visibleWards = wardList.slice(0, wardLimit);
 
@@ -232,12 +265,7 @@ export default function MunicipalityScreen() {
             <StatTile
               compact
               label="Votes cast"
-              value={formatNumber(
-                parties.reduce(
-                  (total, party) => total + (party.TotalValidVotes ?? 0),
-                  0,
-                ),
-              )}
+              value={formatNumber(municipalityVotesCast(municipality))}
             />
           </View>
         </Card>
@@ -273,10 +301,34 @@ export default function MunicipalityScreen() {
         </View>
       </Section>
 
+      {!wards.data && !wards.loading && parties.length > 0 ? (
+        <View style={styles.padded}>
+          <Notice
+            tone="info"
+            title="Leading party shown"
+            message="The IEC feed only includes the leading party here. Downloading the full breakdown…"
+          />
+        </View>
+      ) : null}
+
+      {wards.loading ? (
+        <View style={styles.padded}>
+          <LoadingState message="Downloading full party standings…" />
+        </View>
+      ) : null}
+
+      <View style={styles.controls}>
+        <SegmentedControl
+          options={PARTY_SORTS}
+          value={partySort}
+          onChange={setPartySort}
+        />
+      </View>
+
       <Section
         title="Party standings"
         subtitle={pluralise(
-          parties.reduce((total, party) => total + (party.TotalValidVotes ?? 0), 0),
+          municipalityVotesCast(municipality),
           'valid vote',
         )}
       >
@@ -402,6 +454,14 @@ export default function MunicipalityScreen() {
                   Reload
                 </Text>
               </Pressable>
+            </View>
+
+            <View style={styles.controls}>
+              <SegmentedControl
+                options={WARD_SORTS}
+                value={wardSort}
+                onChange={setWardSort}
+              />
             </View>
 
             <SearchField
@@ -569,6 +629,11 @@ function WardCard({
 }
 
 const styles = StyleSheet.create({
+  controls: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
   padded: {
     paddingHorizontal: spacing.lg,
   },

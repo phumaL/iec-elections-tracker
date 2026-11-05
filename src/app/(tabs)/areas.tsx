@@ -21,6 +21,8 @@ import {
   municipalitiesReporting,
   partySupport,
   pickLeadingParty,
+  sortMunicipalities,
+  type MunicipalitySortMetric,
   votesCounted,
 } from '@/lib/derive';
 import { formatNumber } from '@/lib/format';
@@ -40,6 +42,14 @@ export default function AreasScreen() {
   const { national, partyIndex, loading, refreshing, error, refresh } = useResults();
   const [mode, setMode] = useState<AreaMode>('provinces');
   const [query, setQuery] = useState('');
+  const [municipalitySort, setMunicipalitySort] =
+    useState<MunicipalitySortMetric>('name');
+
+  const MUNICIPALITY_SORTS: readonly SegmentedOption<MunicipalitySortMetric>[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'progress', label: 'Progress' },
+    { key: 'votes', label: 'Votes' },
+  ];
 
   const provinces = useMemo(() => getProvinces(national), [national]);
   const municipalities = useMemo(
@@ -59,12 +69,15 @@ export default function AreasScreen() {
 
   const filteredMunicipalities = useMemo(
     () =>
-      municipalities.filter(
-        (municipality) =>
-          municipality.Municipality.toLowerCase().includes(search) ||
-          municipality.Province.toLowerCase().includes(search),
+      sortMunicipalities(
+        municipalities.filter(
+          (municipality) =>
+            municipality.Municipality.toLowerCase().includes(search) ||
+            municipality.Province.toLowerCase().includes(search),
+        ),
+        municipalitySort,
       ),
-    [municipalities, search],
+    [municipalities, search, municipalitySort],
   );
 
   return (
@@ -77,6 +90,13 @@ export default function AreasScreen() {
 
       <View style={styles.controls}>
         <SegmentedControl options={MODES} value={mode} onChange={setMode} />
+        {mode === 'municipalities' ? (
+          <SegmentedControl
+            options={MUNICIPALITY_SORTS}
+            value={municipalitySort}
+            onChange={setMunicipalitySort}
+          />
+        ) : null}
         <SearchField
           value={query}
           onChangeText={setQuery}

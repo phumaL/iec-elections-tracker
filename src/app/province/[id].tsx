@@ -4,6 +4,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AreaRow } from '@/components/ui/AreaRow';
 import { Card } from '@/components/ui/Card';
+import {
+  SegmentedControl,
+  type SegmentedOption,
+} from '@/components/ui/SegmentedControl';
 import { DetailHeader } from '@/components/ui/Headers';
 import { LiveBadge } from '@/components/ui/LiveBadge';
 import { PartyRow } from '@/components/ui/PartyRow';
@@ -26,7 +30,9 @@ import {
   hasMunicipalityResults,
   partySupport,
   pickLeadingParty,
+  sortMunicipalities,
   sortParties,
+  type MunicipalitySortMetric,
   votesCounted,
 } from '@/lib/derive';
 import {
@@ -57,6 +63,14 @@ export default function ProvinceScreen() {
     refresh,
   } = useResults();
   const [showAll, setShowAll] = useState(false);
+  const [municipalitySort, setMunicipalitySort] =
+    useState<MunicipalitySortMetric>('name');
+
+  const MUNICIPALITY_SORTS: readonly SegmentedOption<MunicipalitySortMetric>[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'progress', label: 'Progress' },
+    { key: 'votes', label: 'Votes' },
+  ];
 
   const province = useMemo(
     () =>
@@ -72,8 +86,12 @@ export default function ProvinceScreen() {
   );
 
   const municipalities = useMemo(
-    () => getMunicipalitiesForProvince(national, id ?? ''),
-    [national, id],
+    () =>
+      sortMunicipalities(
+        getMunicipalitiesForProvince(national, id ?? ''),
+        municipalitySort,
+      ),
+    [national, id, municipalitySort],
   );
 
   const counted = votesCounted(province);
@@ -286,6 +304,14 @@ export default function ProvinceScreen() {
         </Card>
       </Section>
 
+      <View style={styles.controls}>
+        <SegmentedControl
+          options={MUNICIPALITY_SORTS}
+          value={municipalitySort}
+          onChange={setMunicipalitySort}
+        />
+      </View>
+
       <Section
         title="Municipalities"
         subtitle="Tap for ward and council detail"
@@ -333,6 +359,11 @@ export default function ProvinceScreen() {
 }
 
 const styles = StyleSheet.create({
+  controls: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
   padded: {
     paddingHorizontal: spacing.lg,
   },
