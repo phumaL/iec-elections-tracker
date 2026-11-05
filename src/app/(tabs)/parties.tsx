@@ -83,7 +83,7 @@ export default function PartiesScreen() {
   );
 
   return (
-    <Screen tabBar onRefresh={refresh} refreshing={refreshing}>
+    <Screen onRefresh={refresh} refreshing={refreshing}>
       <ScreenHeader
         eyebrow="National"
         title="Parties"

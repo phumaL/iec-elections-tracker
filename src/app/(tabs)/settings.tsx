@@ -81,7 +81,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <Screen tabBar>
+    <Screen>
       <ScreenHeader
         eyebrow="Preferences"
         title="Settings"

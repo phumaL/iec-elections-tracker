@@ -68,7 +68,7 @@ export default function AreasScreen() {
   );
 
   return (
-    <Screen tabBar onRefresh={refresh} refreshing={refreshing}>
+    <Screen onRefresh={refresh} refreshing={refreshing}>
       <ScreenHeader
         eyebrow="Explore"
         title="Areas"

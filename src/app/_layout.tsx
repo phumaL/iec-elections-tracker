@@ -1,7 +1,9 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { BottomTabs } from '@/components/navigation/BottomTabs';
 import { ResultsProvider } from '@/context/results';
 import { SettingsProvider } from '@/context/settings';
 import { ThemeProvider, useTheme } from '@/theme';
@@ -24,7 +26,7 @@ function RootNavigator() {
   const theme = useTheme();
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
@@ -39,6 +41,7 @@ function RootNavigator() {
         <Stack.Screen name="party/[id]" />
         <Stack.Screen name="+not-found" />
       </Stack>
-    </>
+      <BottomTabs />
+    </View>
   );
 }

@@ -5,7 +5,6 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/theme';
 
@@ -14,8 +13,6 @@ interface ScreenProps {
   onRefresh?: () => void;
   refreshing?: boolean;
   contentContainerStyle?: StyleProp<ViewStyle>;
-  /** Leaves room for the floating tab bar on the four top-level screens. */
-  tabBar?: boolean;
 }
 
 export function Screen({
@@ -23,17 +20,15 @@ export function Screen({
   onRefresh,
   refreshing = false,
   contentContainerStyle,
-  tabBar = false,
 }: ScreenProps) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.background }}
       contentContainerStyle={[
         {
-          paddingBottom: insets.bottom + (tabBar ? 108 : 36),
+          paddingBottom: 36,
           flexGrow: 1,
         },
         contentContainerStyle,

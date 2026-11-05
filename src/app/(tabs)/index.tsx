@@ -92,7 +92,6 @@ export default function OverviewScreen() {
 
   return (
     <Screen
-      tabBar
       onRefresh={refresh}
       refreshing={refreshing}
       contentContainerStyle={{ paddingTop: 0 }}
