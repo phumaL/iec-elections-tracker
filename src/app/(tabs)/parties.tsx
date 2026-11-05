@@ -87,7 +87,7 @@ export default function PartiesScreen() {
       <ScreenHeader
         eyebrow="National"
         title="Parties"
-        subtitle="Compare support, seats and councils won."
+        subtitle="Compare support, seats and councils won. Parties appear as soon as they record a vote."
       />
 
       <View style={styles.controls}>
@@ -117,7 +117,7 @@ export default function PartiesScreen() {
           ) : null}
           <View style={styles.summaryRow}>
             <Text style={[styles.count, { color: theme.textMuted }]}>
-              {pluralise(parties.length, 'party', 'parties')} contesting
+              {pluralise(parties.length, 'party', 'parties')} with counted votes
             </Text>
             <Text style={[styles.count, { color: theme.textFaint }]}>
               {formatNumber(totalSeats)} seats · {formatNumber(totalCouncils)}{' '}

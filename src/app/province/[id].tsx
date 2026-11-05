@@ -21,7 +21,9 @@ import {
 import { useResults } from '@/context/results';
 import {
   deltaFromPrevious,
+  getMunicipalitiesForProvince,
   getPreviousSupport,
+  hasMunicipalityResults,
   partySupport,
   pickLeadingParty,
   sortParties,
@@ -70,13 +72,8 @@ export default function ProvinceScreen() {
   );
 
   const municipalities = useMemo(
-    () =>
-      [...(province?.MunicipalityResults ?? [])].sort((left, right) =>
-        left.Municipality.localeCompare(right.Municipality, 'en', {
-          sensitivity: 'base',
-        }),
-      ),
-    [province],
+    () => getMunicipalitiesForProvince(national, id ?? ''),
+    [national, id],
   );
 
   const counted = votesCounted(province);
@@ -181,7 +178,7 @@ export default function ProvinceScreen() {
             />
             <StatTile
               compact
-              label="Municipalities"
+              label="Municipalities completed"
               value={`${formatNumber(
                 province.MuncipalitiesComplete,
               )}/${formatNumber(province.MunicExpected)}`}
@@ -307,7 +304,11 @@ export default function ProvinceScreen() {
               >
                 <AreaRow
                   title={municipality.Municipality}
-                  subtitle={municipality.Province}
+                  subtitle={
+                    hasMunicipalityResults(municipality)
+                      ? municipality.Province
+                      : 'No results yet'
+                  }
                   leadingMeta={meta}
                   leadingSupport={leading ? partySupport(leading) : null}
                   percent={votesCounted(municipality)}

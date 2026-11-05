@@ -34,6 +34,7 @@ import {
   getAllMunicipalities,
   getMunicipalityCouncilStatus,
   getPreviousSupport,
+  hasMunicipalityResults,
   getWardNumber,
   partySeats,
   partySupport,
@@ -75,16 +76,18 @@ export default function MunicipalityScreen() {
   const [expandedWards, setExpandedWards] = useState<Set<string>>(new Set());
 
   const municipality = useMemo(() => {
-    const fromFeed = getAllMunicipalities(national).find(
-      (item) => String(item.MunicipalityID) === String(id),
-    );
-    if (fromFeed) return fromFeed;
-
+    // Prefer the fetched municipality file: it carries the ward breakdown,
+    // while the national snapshot only has the aggregate. Bundled reference
+    // data means a stub can exist before the municipality has any results.
     if (wards.data && String(wards.data.MunicipalityID) === String(id)) {
       return wards.data;
     }
 
-    return null;
+    return (
+      getAllMunicipalities(national).find(
+        (item) => String(item.MunicipalityID) === String(id),
+      ) ?? null
+    );
   }, [national, id, wards.data]);
 
   const parties = useMemo(
@@ -178,6 +181,16 @@ export default function MunicipalityScreen() {
       {error ? (
         <View style={styles.padded}>
           <Notice tone="danger" title="Live updates interrupted" message={error} />
+        </View>
+      ) : null}
+
+      {!hasMunicipalityResults(municipality) ? (
+        <View style={styles.padded}>
+          <Notice
+            tone="warning"
+            title="No votes counted yet"
+            message="This municipality is on the ballot but has not reported any voting districts. Results will appear here automatically."
+          />
         </View>
       ) : null}
 

@@ -32,6 +32,7 @@ import {
   getAllMunicipalities,
   getPreviousSupport,
   getProvinces,
+  municipalitiesReporting,
   partySupport,
   partyVotes,
   pickLeadingParty,
@@ -299,7 +300,9 @@ export default function OverviewScreen() {
 
           <Section
             title="Provinces"
-            subtitle={`${formatNumber(municipalities.length)} municipalities reporting`}
+            subtitle={`${formatNumber(
+              municipalitiesReporting(national),
+            )} of ${formatNumber(municipalities.length)} municipalities reporting`}
           >
             <Card padded={false} style={styles.listCard}>
               {provinces.map((province) => {
@@ -314,7 +317,9 @@ export default function OverviewScreen() {
                       title={province.Province}
                       subtitle={`${formatNumber(
                         province.MunicipalityResults.length,
-                      )} municipalities`}
+                      )} of ${formatNumber(
+                        province.MunicExpected,
+                      )} municipalities reporting`}
                       leadingMeta={meta}
                       leadingSupport={leading ? partySupport(leading) : null}
                       percent={votesCounted(province)}

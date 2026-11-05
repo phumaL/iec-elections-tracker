@@ -17,6 +17,8 @@ import { useResults } from '@/context/results';
 import {
   getAllMunicipalities,
   getProvinces,
+  hasMunicipalityResults,
+  municipalitiesReporting,
   partySupport,
   pickLeadingParty,
   votesCounted,
@@ -105,9 +107,9 @@ export default function AreasScreen() {
           <Text style={[styles.count, { color: theme.textMuted }]}>
             {mode === 'provinces'
               ? `${formatNumber(filteredProvinces.length)} provinces`
-              : `${formatNumber(filteredMunicipalities.length)} of ${formatNumber(
-                  municipalities.length,
-                )} municipalities`}
+              : `${formatNumber(
+                  municipalitiesReporting(national),
+                )} of ${formatNumber(municipalities.length)} municipalities reporting`}
           </Text>
 
           <Card padded={false} style={styles.card}>
@@ -132,7 +134,9 @@ export default function AreasScreen() {
                         title={province.Province}
                         subtitle={`${formatNumber(
                           province.MunicipalityResults.length,
-                        )} municipalities`}
+                        )} of ${formatNumber(
+                          province.MunicExpected,
+                        )} municipalities reporting`}
                         leadingMeta={meta}
                         leadingSupport={leading ? partySupport(leading) : null}
                         percent={votesCounted(province)}
@@ -170,7 +174,11 @@ export default function AreasScreen() {
                   >
                     <AreaRow
                       title={municipality.Municipality}
-                      subtitle={municipality.Province}
+                      subtitle={
+                        hasMunicipalityResults(municipality)
+                          ? municipality.Province
+                          : `${municipality.Province} · No results yet`
+                      }
                       leadingMeta={meta}
                       leadingSupport={leading ? partySupport(leading) : null}
                       percent={votesCounted(municipality)}
