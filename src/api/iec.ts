@@ -5,6 +5,7 @@ import type {
   MunicipalityResult,
   NationalResult,
   PartyInfo,
+  ProvinceResult,
 } from '@/types/iec';
 
 /**
@@ -25,6 +26,8 @@ export const ENDPOINTS = {
   national: `${BASE_URL}/MapsJason/${ELECTION_YEAR}/${EVENT_ID}LiteMapsNational.js`,
   municipality: (municipalityId: number | string) =>
     `${BASE_URL}/MapsJason/${ELECTION_YEAR}/${EVENT_ID}Munic${municipalityId}.js`,
+  province: (provinceId: number | string) =>
+    `${BASE_URL}/MapsJason/${ELECTION_YEAR}/${EVENT_ID}Province${provinceId}.js`,
   partyList: `${BASE_URL}/MapsJason/2016/PartyList.js`,
   history: `${BASE_URL}/MapsJason/HistoryYears/HistoryYearsNational.js`,
   partyImage: (file: string) =>
@@ -364,6 +367,17 @@ export function fetchMunicipalityResults(
     ENDPOINTS.municipality(municipalityId),
     { signal, timeoutMs: 120_000, retries: 0 },
   );
+}
+
+export function fetchProvinceResults(
+  provinceId: number | string,
+  signal?: AbortSignal,
+): Promise<ProvinceResult> {
+  return fetchJson<ProvinceResult>(ENDPOINTS.province(provinceId), {
+    signal,
+    timeoutMs: 30_000,
+    retries: 1,
+  });
 }
 
 export function describeError(error: unknown): string {

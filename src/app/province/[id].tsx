@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AreaRow } from '@/components/ui/AreaRow';
@@ -23,6 +23,7 @@ import {
   Notice,
 } from '@/components/ui/States';
 import { useResults } from '@/context/results';
+import { fetchProvinceResults } from '@/api/iec';
 import {
   deltaFromPrevious,
   getMunicipalitiesForProvince,
@@ -45,6 +46,7 @@ import {
 import { getPartyMeta } from '@/lib/parties';
 import { useNow } from '@/hooks/useNow';
 import { radius, spacing, useTheme } from '@/theme';
+import type { ProvinceResult } from '@/types/iec';
 
 export default function ProvinceScreen() {
   const theme = useTheme();
@@ -66,6 +68,9 @@ export default function ProvinceScreen() {
   const [municipalitySort, setMunicipalitySort] =
     useState<MunicipalitySortMetric>('name');
   const [municipalityLimit, setMunicipalityLimit] = useState(10);
+  const [provinceDetail, setProvinceDetail] = useState<ProvinceResult | null>(
+    null,
+  );
 
   const MUNICIPALITY_SORTS: readonly SegmentedOption<MunicipalitySortMetric>[] = [
     { key: 'name', label: 'Name' },
@@ -81,9 +86,29 @@ export default function ProvinceScreen() {
     [national, id],
   );
 
+  // Fetch the full province file (46 KB) for complete party standings.
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    fetchProvinceResults(id)
+      .then((data) => {
+        if (!cancelled) setProvinceDetail(data);
+      })
+      .catch(() => {
+        if (!cancelled) setProvinceDetail(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
   const parties = useMemo(
-    () => sortParties(province?.PartyBallotResults, 'support'),
-    [province],
+    () =>
+      sortParties(
+        provinceDetail?.PartyBallotResults ?? province?.PartyBallotResults,
+        'support',
+      ),
+    [province, provinceDetail],
   );
 
   const municipalities = useMemo(
