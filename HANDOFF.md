@@ -52,6 +52,7 @@ polling faster mostly returns identical bytes. A 304 still costs a round trip, s
   province, municipality and party detail pages
 - Sort controls on municipality party standings, province and areas municipality
   lists, and ward lists
+- Province municipality list shows 10 at a time with incremental "Show 10 more"
 - Municipality detail auto-downloads the full feed so all parties are shown;
   "Votes cast" uses the feed total instead of only the leading party's votes
 - Live updates poll at most every 60 s; manual refreshes are rate-limited to
