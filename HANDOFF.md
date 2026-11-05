@@ -50,6 +50,8 @@ polling faster mostly returns identical bytes. A 304 still costs a round trip, s
   missing from the sparse 2026 feed show as "No results yet" instead of vanishing
 - Persistent bottom tab bar rendered from the root layout, so it stays on
   province, municipality and party detail pages
+- Sort controls on municipality party standings, province and areas municipality
+  lists, and ward lists
 - Live updates poll at most every 60 s; manual refreshes are rate-limited to
   one request every 15 s (queued, not dropped)
 - App shell: safe area, theme + settings + results providers, four tabs, detail
