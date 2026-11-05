@@ -1,4 +1,4 @@
-# Handoff — IEC Live Results (React Native / Expo)
+# Handoff — IEC Elections Tracker (React Native / Expo)
 
 Updated: 2026-11-05, during the live 2026 South African municipal election count.
 
@@ -16,20 +16,21 @@ The IEC dashboard is data-hungry, so the app is deliberately frugal:
 | Item | Naive approach | What the app does now |
 | --- | --- | --- |
 | National feed | Full poll every 30 s | **Conditional GET** with `If-None-Match`; unchanged polls return a body-less **304**. Default poll 60 s; 30 s / 2 min / manual optional. |
-| Party names/logos | 471 KB `PartyList.js` | **Bundled ~2.9 KB** `src/data/parties.ts` for the 21 parties contesting 2026. |
-| History | 1.4 MB `HistoryYearsNational.js` | **Bundled ~6 KB** `src/data/history.ts` with only national/provincial rows for those 21 parties. |
+| Party names/logos | 471 KB `PartyList.js` | **Bundled ~2.5 KB** `src/data/parties.ts` for the parties that have counted votes so far (18 at the last regeneration). |
+| History | 1.4 MB `HistoryYearsNational.js` | **Bundled ~6 KB** `src/data/history.ts` with only national/provincial rows for those parties. |
+| Municipality list | Only what the live feed has counted | **Bundled all 213** from the completed 2021 feed; live entries override them. |
 | Cached snapshot | Raw national file | `compactNational()` strips empty `WardResults`; ~80–92 KB early in the count, low hundreds of KB when complete. |
 | Municipality wards | 10–20 MB file | Opt-in only, no polling, one municipality kept in memory, explicit reload. |
 | App backgrounded | Timer keeps running | Polling paused; refreshed on return only if the last check is older than 15 s. Manual-only mode never auto-refreshes. |
 | Failures | Hammer the server | Exponential backoff up to 5 minutes, reset on success. |
 
-Both bundled files are generated from the live IEC feeds:
+All three bundled files are generated from the live IEC feeds:
 
 ```sh
 npm run data:build
 ```
 
-Re-run only if the 2026 candidate lists or historical files change. The national
+Re-run as counting progresses (new parties appear) or when the reference election changes. The national
 snapshot stores its `ETag`/`Last-Modified` so a cold start can validate the cache
 instead of downloading it again. `npm run proxy` forwards those conditional
 headers for the web preview and allows them in CORS.
@@ -45,6 +46,8 @@ polling faster mostly returns identical bytes. A 304 still costs a round trip, s
 - Expo SDK 58 / React Native 0.88 / TypeScript 6 project, Expo Router entry
 - Data layer: typed IEC models, conditional national fetch, compact cache,
   derivation helpers, formatting, party metadata, bundled history
+- Bundled all 213 municipalities from the completed 2021 feed; municipalities
+  missing from the sparse 2026 feed show as "No results yet" instead of vanishing
 - App shell: safe area, theme + settings + results providers, four tabs, detail
   routes, 404 screen
 - Screens: national overview, areas, parties, settings, province, municipality,
@@ -56,6 +59,9 @@ polling faster mostly returns identical bytes. A 304 still costs a round trip, s
 - Light/dark theme; persisted refresh/theme settings; inline clear-cache confirm
   that works on native and web
 - `README.md` and this handoff
+- Signed Android release APK built locally with JDK 21 and the Android SDK
+  (`com.phumal.iecelections`, v1.0.0/1); installed and launched on a physical
+  Android 16 device
 
 ### Verified
 
@@ -64,8 +70,12 @@ polling faster mostly returns identical bytes. A 304 still costs a round trip, s
 - `npx expo export --platform web` succeeds
 - Proxy conditional fetch verified: first request `200` + `ETag` + body, second
   request with `If-None-Match` returns `304` and 0 bytes
-- Live feed verified: 9 provinces, all municipalities listed, 21 parties
-  contesting, ~80–92 KB national file early in the count
+- Live feed verified: 9 provinces, 213 municipalities listed (134 reporting at
+  the time), parties appearing as they record votes, ~80–92 KB national file
+  early in the count
+- Device verified: Gauteng shows "7 of 9 municipalities reporting", pending
+  councils are marked "No results yet", and the parties tab reports the number
+  "with counted votes"
 
 ### Not yet done / suggested next steps
 
@@ -76,6 +86,10 @@ polling faster mostly returns identical bytes. A 304 still costs a round trip, s
 - Web deploys need `EXPO_PUBLIC_IEC_PROXY` pointed at a hosted proxy
 - Ward-level municipal files are intentionally not persisted; reopening one
   requires a fresh download
+- Parties that have not recorded a vote anywhere cannot be listed: the IEC feed
+  omits them and there is no 2026 candidate-list endpoint. Party metadata is
+  regenerated as counting progresses, and the tab says "with counted votes"
+  rather than claiming to show every contestant.
 
 ## Stack / project state
 
@@ -84,8 +98,9 @@ polling faster mostly returns identical bytes. A 304 still costs a round trip, s
 - **Expo Router** file-based routes in `src/app/` (required by `AGENTS.md`)
 - `package.json` main is `expo-router/entry`
 - Typed routes enabled (`experiments.typedRoutes`), `@/* -> ./src/*`
-- `app.json`: name "IEC Live Results", scheme `ieclive`, automatic UI style,
-  bundle/package `za.org.elections.liveresults`
+- `app.json`: name "IEC Elections Tracker", scheme `iecelections`, automatic UI
+  style, bundle/package `com.phumal.iecelections` (deliberately not under an IEC
+  domain), version `1.0.0` / versionCode `1`
 - Installed deps include expo-router, safe-area-context, screens, linking,
   constants, status-bar, web/react-dom, @expo/vector-icons, expo-image,
   @react-native-async-storage/async-storage, react-native-svg, expo-haptics,
@@ -101,7 +116,7 @@ npm install
 npm start                 # Expo dev server; press a / i / w
 npm run proxy             # local CORS proxy on :8787 for web
 npm run web
-npm run data:build        # regenerate bundled party/history data
+npm run data:build        # regenerate bundled party/history/municipality data
 npm run typecheck
 npm run lint
 npx expo export --platform web
@@ -130,8 +145,9 @@ src/
   context/
     settings.tsx             persisted refresh interval + theme preference
     results.tsx              national polling, cache hydration, backoff
-  data/parties.ts            generated 2026 party metadata
+  data/parties.ts            generated party metadata
   data/history.ts            generated compact history tuples
+  data/municipalities.ts     generated 213-municipality reference list
   hooks/useNow.ts            re-render for relative timestamps
   hooks/useMunicipalityDetail.ts   single-slot opt-in ward download
   lib/derive.ts              sorting, leaders, council status, history lookups
@@ -164,6 +180,30 @@ The national Lite file already contains every province and municipality summary,
 so one polling feed powers the overview, province and municipality screens. Do
 not fetch per-province files.
 
+### The live feed is sparse — this matters for counts
+
+The 2026 feed is **not** a complete candidate list. It contains only areas and
+parties that already have at least one counted result:
+
+- All 9 provinces are always present.
+- **Municipalities only appear once they have counted votes.** On 5 Nov 2026 at
+  ~02:42 the feed had 134 of the expected 213 municipalities (Gauteng 7 of 9,
+  KZN 14 of 44, Limpopo 3 of 22, …).
+- **Parties only appear once they have a vote somewhere.** At the same time 14
+  parties were present nationally; by 02:49 that had grown and the bundled
+  metadata was regenerated for 18 parties.
+- `WardResults` is always empty in the national file. Ward and voting-district
+  detail exists only in the per-municipality files.
+- `MuncipalitiesComplete` counts municipalities that are **fully counted**
+  (100%), not municipalities that have started reporting. It stays at 0 for a
+  long time. Use `MunicipalityResults.length` for "reporting".
+
+To show the full picture, `src/data/municipalities.ts` bundles all 213
+municipalities from the completed 2021 feed (`EEID1091LiteMapsNational.js`).
+Results from the live feed override the reference entries; municipalities with
+no live entry render as "No results yet". Regenerate that file with
+`npm run data:build`.
+
 ### Important shape notes
 
 - `NationalResult.ProvinceResults[]` contains `MunicipalityResults[]`.
@@ -175,8 +215,8 @@ not fetch per-province files.
 - Progress field typo from IEC: **`MuncipalitiesComplete`** (one "i").
 - "Votes counted" on the dashboard = **`Perc_VDsComplete`**.
 - Special party IDs: **`0` = Independent**, **`-2` = Other**.
-- `PartyList.js` has 2,336 entries across all elections; the 2026 feed uses 21
-  party IDs. Prefer the entry with full name + image + colour.
+- `PartyList.js` has 2,336 entries across all elections; the 2026 feed exposes a
+  growing subset. Prefer the entry with full name + image + colour.
 - History rows: `{ lYear, lPartyId, iPercentageSupport, lProvinceId?,
   lMunicipalityId? }`; national history covers 2000–2021, excluding 2026.
 - Report dates are ISO strings with `+02:00`; show SA time directly.
