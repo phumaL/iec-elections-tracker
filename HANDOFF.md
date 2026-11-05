@@ -48,6 +48,10 @@ polling faster mostly returns identical bytes. A 304 still costs a round trip, s
   derivation helpers, formatting, party metadata, bundled history
 - Bundled all 213 municipalities from the completed 2021 feed; municipalities
   missing from the sparse 2026 feed show as "No results yet" instead of vanishing
+- Persistent bottom tab bar rendered from the root layout, so it stays on
+  province, municipality and party detail pages
+- Live updates poll at most every 60 s; manual refreshes are rate-limited to
+  one request every 15 s (queued, not dropped)
 - App shell: safe area, theme + settings + results providers, four tabs, detail
   routes, 404 screen
 - Screens: national overview, areas, parties, settings, province, municipality,
@@ -59,9 +63,9 @@ polling faster mostly returns identical bytes. A 304 still costs a round trip, s
 - Light/dark theme; persisted refresh/theme settings; inline clear-cache confirm
   that works on native and web
 - `README.md` and this handoff
-- Signed Android release APK built locally with JDK 21 and the Android SDK
-  (`com.phumal.iecelections`, v1.0.0/1); installed and launched on a physical
-  Android 16 device
+- Signed Android release APKs built locally with JDK 21 and the Android SDK
+  (`com.phumal.iecelections`, v1.0.0 and v1.0.1); installed and launched on a
+  physical Android 16 device
 
 ### Verified
 
