@@ -24,8 +24,10 @@ from the latest GitHub release.
 2. Allow installs from your browser/file manager when Android asks.
 3. Open **IEC Elections Tracker**.
 
-The APK is signed and targets Android 7.0 and newer. It is an unofficial app and
-is not affiliated with the Electoral Commission.
+The APK is signed and targets Android 7.0 and newer. Two builds are published:
+`iec-elections-tracker-1.0.2.apk` (32 MB, arm64-v8a, covers 95%+ of devices)
+and `iec-elections-tracker-1.0.2-armeabi-v7a.apk` (24 MB, older 32-bit phones).
+It is an unofficial app and is not affiliated with the Electoral Commission.
 
 ## Requirements for development
 
