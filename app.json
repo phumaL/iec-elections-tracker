@@ -1,24 +1,24 @@
 {
   "expo": {
-    "name": "IEC Live Results",
-    "slug": "iec-live-results",
+    "name": "IEC Elections Tracker",
+    "slug": "iec-elections-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "ieclive",
+    "scheme": "iecelections",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "za.org.elections.liveresults"
+      "bundleIdentifier": "com.phumal.iecelections",
+      "buildNumber": "1"
     },
     "android": {
-      "package": "za.org.elections.liveresults",
+      "package": "com.phumal.iecelections",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#0047BA",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#103B66",
+        "foregroundImage": "./assets/icon.png"
       },
       "predictiveBackGestureEnabled": false
     },

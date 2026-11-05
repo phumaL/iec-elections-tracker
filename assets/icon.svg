@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">IEC Elections Tracker app icon</title>
+  <desc id="desc">An original ballot paper and rising results bars symbol.</desc>
+  <rect width="512" height="512" rx="112" fill="#103B66"/>
+  <path d="M128 112h184l72 72v216H128z" fill="#F7F2E8"/>
+  <path d="M312 112v72h72" fill="#D9E5ED"/>
+  <path d="M168 232h128M168 270h96" fill="none" stroke="#A8B9C8" stroke-linecap="round" stroke-width="18"/>
+  <path d="M168 352V318h42v34M235 352V288h42v64M302 352V254h42v98" fill="#E6A93A"/>
+  <path d="m164 160 20 20 38-42" fill="none" stroke="#2B8A72" stroke-linecap="round" stroke-linejoin="round" stroke-width="18"/>
+</svg>
