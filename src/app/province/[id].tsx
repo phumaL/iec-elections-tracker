@@ -44,7 +44,7 @@ import {
 } from '@/lib/format';
 import { getPartyMeta } from '@/lib/parties';
 import { useNow } from '@/hooks/useNow';
-import { spacing, useTheme } from '@/theme';
+import { radius, spacing, useTheme } from '@/theme';
 
 export default function ProvinceScreen() {
   const theme = useTheme();
@@ -65,6 +65,7 @@ export default function ProvinceScreen() {
   const [showAll, setShowAll] = useState(false);
   const [municipalitySort, setMunicipalitySort] =
     useState<MunicipalitySortMetric>('name');
+  const [municipalityLimit, setMunicipalityLimit] = useState(10);
 
   const MUNICIPALITY_SORTS: readonly SegmentedOption<MunicipalitySortMetric>[] = [
     { key: 'name', label: 'Name' },
@@ -308,7 +309,10 @@ export default function ProvinceScreen() {
         <SegmentedControl
           options={MUNICIPALITY_SORTS}
           value={municipalitySort}
-          onChange={setMunicipalitySort}
+          onChange={(value) => {
+            setMunicipalitySort(value);
+            setMunicipalityLimit(10);
+          }}
         />
       </View>
 
@@ -317,7 +321,9 @@ export default function ProvinceScreen() {
         subtitle="Tap for ward and council detail"
       >
         <Card padded={false} style={styles.listCard}>
-          {municipalities.map((municipality) => {
+          {municipalities
+            .slice(0, municipalityLimit)
+            .map((municipality) => {
             const leading = pickLeadingParty(municipality.PartyBallotResults);
             const meta = leading
               ? getPartyMeta(partyIndex, leading.ID, leading.Name)
@@ -351,6 +357,26 @@ export default function ProvinceScreen() {
             );
           })}
         </Card>
+        {municipalities.length > municipalityLimit ? (
+          <View style={styles.padded}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() =>
+                setMunicipalityLimit((limit) => limit + 10)
+              }
+              style={({ pressed }) => [
+                styles.showMore,
+                { borderColor: theme.border },
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Text style={[styles.showMoreLabel, { color: theme.primary }]}>
+                Show {Math.min(10, municipalities.length - municipalityLimit)}{' '}
+                more municipalities
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
       </Section>
 
       <SourceFooter />
@@ -366,6 +392,17 @@ const styles = StyleSheet.create({
   },
   padded: {
     paddingHorizontal: spacing.lg,
+  },
+  showMore: {
+    alignItems: 'center',
+    marginTop: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  showMoreLabel: {
+    fontSize: 12,
+    fontWeight: '800',
   },
   countCard: {
     gap: spacing.md,
