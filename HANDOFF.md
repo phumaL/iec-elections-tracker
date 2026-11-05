@@ -68,8 +68,8 @@ polling faster mostly returns identical bytes. A 304 still costs a round trip, s
   that works on native and web
 - `README.md` and this handoff
 - Signed Android release APKs built locally with JDK 21 and the Android SDK
-  (`com.phumal.iecelections`, v1.0.0 and v1.0.1); installed and launched on a
-  physical Android 16 device
+  (`com.phumal.iecelections`, v1.0.0, v1.0.1 and v1.0.2); v1.0.2 installed
+  and launched on a physical Android 16 device
 
 ### Verified
 
