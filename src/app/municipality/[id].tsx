@@ -97,6 +97,7 @@ export default function MunicipalityScreen() {
   const [expandedWards, setExpandedWards] = useState<Set<string>>(new Set());
   const [partySort, setPartySort] = useState<PartySort>('support');
   const [wardSort, setWardSort] = useState<WardSort>('number');
+  const [showAllParties, setShowAllParties] = useState(false);
 
   // Automatically fetch the full municipal file so the party standings show
   // every contestant, not just the leading party from the national snapshot.
@@ -127,6 +128,8 @@ export default function MunicipalityScreen() {
     () => sortParties(municipality?.PartyBallotResults, partySort),
     [municipality, partySort],
   );
+
+  const shownParties = showAllParties ? parties : parties.slice(0, 10);
 
   const council = useMemo(
     () => getMunicipalityCouncilStatus(municipality),
@@ -341,7 +344,7 @@ export default function MunicipalityScreen() {
               message="Party standings will appear as voting districts report."
             />
           ) : (
-            parties.map((party, index, shown) => {
+            shownParties.map((party, index) => {
               const meta = getPartyMeta(partyIndex, party.ID, party.Name);
               const previous = getPreviousSupport(
                 historyIndex,
@@ -356,7 +359,7 @@ export default function MunicipalityScreen() {
                   key={party.ID}
                   style={[
                     styles.rowWrap,
-                    index < shown.length - 1 && {
+                    index < shownParties.length - 1 && {
                       borderBottomColor: theme.border,
                       borderBottomWidth: StyleSheet.hairlineWidth,
                     },
@@ -373,6 +376,23 @@ export default function MunicipalityScreen() {
             })
           )}
         </Card>
+        {parties.length > 10 && !showAllParties ? (
+          <View style={styles.padded}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setShowAllParties(true)}
+              style={({ pressed }) => [
+                styles.showMore,
+                { borderColor: theme.border },
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Text style={[styles.showMoreLabel, { color: theme.primary }]}>
+                Show all {parties.length} parties
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
       </Section>
 
       <Section
