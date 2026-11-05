@@ -17,6 +17,16 @@ from the latest GitHub release.
 > This app is not affiliated with the Electoral Commission. Results are read from
 > public IEC feeds and should always be verified against the official dashboard.
 
+## Screenshots
+
+| Overview | Areas | Province |
+|---|---|---|
+| ![Overview](docs/screenshots/01-overview.png) | ![Areas](docs/screenshots/04-areas-municipalities.png) | ![Province](docs/screenshots/05-province-gauteng.png) |
+
+| Municipality | Parties | Settings |
+|---|---|---|
+| ![Municipality](docs/screenshots/07-municipality-eku.png) | ![Parties](docs/screenshots/09-parties.png) | ![Settings](docs/screenshots/11-settings.png) |
+
 ## Install on Android
 
 1. Open the [latest release](https://github.com/phumaL/iec-elections-tracker/releases/latest)
