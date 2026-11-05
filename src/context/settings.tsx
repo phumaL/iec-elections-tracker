@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { readJson, STORAGE_KEYS, writeJson } from '@/lib/storage';
 
-export type RefreshInterval = 0 | 30 | 60 | 120;
+export type RefreshInterval = 0 | 60 | 120;
 export type ThemePreference = 'system' | 'light' | 'dark';
 
 export interface Settings {
@@ -44,7 +44,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         setSettings({
           ...DEFAULT_SETTINGS,
           ...saved,
-          refreshInterval: ([0, 30, 60, 120] as const).includes(
+          refreshInterval: ([0, 60, 120] as const).includes(
             saved.refreshInterval as RefreshInterval,
           )
             ? saved.refreshInterval

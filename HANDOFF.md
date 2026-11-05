@@ -15,7 +15,7 @@ The IEC dashboard is data-hungry, so the app is deliberately frugal:
 
 | Item | Naive approach | What the app does now |
 | --- | --- | --- |
-| National feed | Full poll every 30 s | **Conditional GET** with `If-None-Match`; unchanged polls return a body-less **304**. Default poll 60 s; 30 s / 2 min / manual optional. |
+| National feed | Full poll every 30 s | **Conditional GET** with `If-None-Match`; unchanged polls return a body-less **304**. Default poll 60 s; 2 min / manual optional. Manual refreshes are rate-limited to one request every 15 s. |
 | Party names/logos | 471 KB `PartyList.js` | **Bundled ~2.5 KB** `src/data/parties.ts` for the parties that have counted votes so far (18 at the last regeneration). |
 | History | 1.4 MB `HistoryYearsNational.js` | **Bundled ~6 KB** `src/data/history.ts` with only national/provincial rows for those parties. |
 | Municipality list | Only what the live feed has counted | **Bundled all 213** from the completed 2021 feed; live entries override them. |
@@ -53,8 +53,8 @@ polling faster mostly returns identical bytes. A 304 still costs a round trip, s
 - Screens: national overview, areas, parties, settings, province, municipality,
   party detail
 - Municipality ward detail is opt-in, cancellable, searchable and paginated
-- Live polling: 30/60/120 s or manual, foreground refresh guard, background pause,
-  exponential backoff, pull-to-refresh
+- Live polling: 60/120 s or manual, foreground refresh guard, background pause,
+  15 s minimum between requests, exponential backoff, pull-to-refresh
 - Local web proxy with CORS, conditional-header forwarding, GET/HEAD, streaming
 - Light/dark theme; persisted refresh/theme settings; inline clear-cache confirm
   that works on native and web

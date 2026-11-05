@@ -33,13 +33,8 @@ const REFRESH_OPTIONS: readonly {
   description: string;
 }[] = [
   {
-    value: 30,
-    title: 'Live · every 30 seconds',
-    description: 'Fastest updates. Uses more requests during the count.',
-  },
-  {
     value: 60,
-    title: 'Balanced · every 60 seconds',
+    title: 'Live · every 60 seconds',
     description: 'Recommended. Matches the IEC edge cache refresh.',
   },
   {
@@ -108,7 +103,8 @@ export default function SettingsScreen() {
           </Text>
           <Text style={[styles.cardHint, { color: theme.textMuted }]}>
             Unchanged results are confirmed with a tiny 304 response, so even the
-            30-second option is light on data.
+            60-second option is light on data. Manual refreshes are limited to
+            one every 15 seconds.
           </Text>
 
           <View style={styles.choiceList}>

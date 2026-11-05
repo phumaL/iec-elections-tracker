@@ -34,6 +34,8 @@ const HISTORY_INDEX: HistoryIndex = buildBundledHistoryIndex(
 
 /** Don't do a redundant network round-trip when returning to the app quickly. */
 const FOREGROUND_REFRESH_MIN_AGE = 15_000;
+/** Minimum gap between the start of one request and the next. */
+const MIN_REQUEST_INTERVAL_MS = 15_000;
 const MAX_BACKOFF_MS = 5 * 60_000;
 
 interface ResultsContextValue {
@@ -67,6 +69,11 @@ export function ResultsProvider({ children }: { children: ReactNode }) {
   const [appActive, setAppActive] = useState(
     AppState.currentState === 'active',
   );
+
+  // Keep a ref in sync so queued timers can read the latest value.
+  useEffect(() => {
+    appActiveRef.current = appActive;
+  }, [appActive]);
   const [pollTick, setPollTick] = useState(0);
 
   const mountedRef = useRef(true);
@@ -75,10 +82,16 @@ export function ResultsProvider({ children }: { children: ReactNode }) {
   const lastModifiedRef = useRef<string | null>(null);
   const lastCheckedRef = useRef(0);
   const refreshInFlightRef = useRef(false);
+  const runRefreshRef = useRef<() => Promise<void>>(async () => {});
+  const lastRequestStartedAtRef = useRef(0);
+  const pendingRefreshRef = useRef(false);
+  const queuedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const appActiveRef = useRef(appActive);
 
-  const refresh = useCallback(async () => {
+  const runRefresh = useCallback(async () => {
     if (refreshInFlightRef.current) return;
     refreshInFlightRef.current = true;
+    lastRequestStartedAtRef.current = Date.now();
 
     if (mountedRef.current) {
       setRefreshing(true);
@@ -137,8 +150,32 @@ export function ResultsProvider({ children }: { children: ReactNode }) {
     } finally {
       refreshInFlightRef.current = false;
       if (mountedRef.current) {
-        setRefreshing(false);
         setLoading(false);
+      }
+
+      // Honour a refresh that was requested during the 15-second buffer.
+      if (
+        pendingRefreshRef.current &&
+        mountedRef.current &&
+        appActiveRef.current
+      ) {
+        pendingRefreshRef.current = false;
+        const wait = Math.max(
+          0,
+          MIN_REQUEST_INTERVAL_MS -
+            (Date.now() - lastRequestStartedAtRef.current),
+        );
+        if (queuedTimerRef.current) clearTimeout(queuedTimerRef.current);
+        queuedTimerRef.current = setTimeout(() => {
+          queuedTimerRef.current = null;
+          if (mountedRef.current && appActiveRef.current) {
+            void runRefreshRef.current();
+          } else if (mountedRef.current) {
+            setRefreshing(false);
+          }
+        }, wait);
+      } else if (mountedRef.current) {
+        setRefreshing(false);
       }
     }
   }, []);
@@ -154,6 +191,52 @@ export function ResultsProvider({ children }: { children: ReactNode }) {
     etagRef.current = null;
     lastModifiedRef.current = null;
   }, []);
+
+  useEffect(() => {
+    runRefreshRef.current = runRefresh;
+  }, [runRefresh]);
+
+  const scheduleRefresh = useCallback(async () => {
+    if (!mountedRef.current) return;
+
+    if (refreshInFlightRef.current) {
+      pendingRefreshRef.current = true;
+      if (mountedRef.current) setRefreshing(true);
+      return;
+    }
+
+    const wait = Math.max(
+      0,
+      MIN_REQUEST_INTERVAL_MS -
+        (Date.now() - lastRequestStartedAtRef.current),
+    );
+
+    if (wait === 0) {
+      pendingRefreshRef.current = false;
+      await runRefresh();
+      return;
+    }
+
+    pendingRefreshRef.current = true;
+    if (mountedRef.current) setRefreshing(true);
+
+    if (!queuedTimerRef.current) {
+      queuedTimerRef.current = setTimeout(() => {
+        queuedTimerRef.current = null;
+        if (!pendingRefreshRef.current) {
+          if (mountedRef.current) setRefreshing(false);
+          return;
+        }
+        if (!mountedRef.current || !appActiveRef.current) {
+          pendingRefreshRef.current = false;
+          if (mountedRef.current) setRefreshing(false);
+          return;
+        }
+        pendingRefreshRef.current = false;
+        void runRefreshRef.current();
+      }, wait);
+    }
+  }, [runRefresh]);
 
   // Hydrate the on-device snapshot before the first network call.
   useEffect(() => {
@@ -178,7 +261,7 @@ export function ResultsProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
 
-      await refresh();
+      await scheduleRefresh();
     };
 
     void boot();
@@ -186,8 +269,12 @@ export function ResultsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
       mountedRef.current = false;
+      if (queuedTimerRef.current) {
+        clearTimeout(queuedTimerRef.current);
+        queuedTimerRef.current = null;
+      }
     };
-  }, [refresh]);
+  }, [scheduleRefresh]);
 
   // Foreground refresh, but skip if the last check was only seconds ago.
   useEffect(() => {
@@ -195,17 +282,26 @@ export function ResultsProvider({ children }: { children: ReactNode }) {
       const active = state === 'active';
       setAppActive(active);
 
+      if (!active) {
+        // Cancel any queued request while backgrounded; it will be re-armed
+        // when the user returns if still pending.
+        if (queuedTimerRef.current) {
+          clearTimeout(queuedTimerRef.current);
+          queuedTimerRef.current = null;
+        }
+        return;
+      }
+
       if (
-        active &&
         settings.refreshInterval !== 0 &&
         Date.now() - lastCheckedRef.current > FOREGROUND_REFRESH_MIN_AGE
       ) {
-        void refresh();
+        void scheduleRefresh();
       }
     });
 
     return () => subscription.remove();
-  }, [refresh, settings.refreshInterval]);
+  }, [scheduleRefresh, settings.refreshInterval]);
 
   // Adaptive polling: back off when the IEC service is failing or offline.
   useEffect(() => {
@@ -218,7 +314,7 @@ export function ResultsProvider({ children }: { children: ReactNode }) {
         : base;
 
     const timer = setTimeout(() => {
-      void refresh().finally(() => {
+      void scheduleRefresh().finally(() => {
         if (mountedRef.current) setPollTick((tick) => tick + 1);
       });
     }, wait);
@@ -229,7 +325,7 @@ export function ResultsProvider({ children }: { children: ReactNode }) {
     errorCount,
     lastFetchedAt,
     pollTick,
-    refresh,
+    scheduleRefresh,
     settings.refreshInterval,
   ]);
 
@@ -244,10 +340,10 @@ export function ResultsProvider({ children }: { children: ReactNode }) {
       error,
       lastFetchedAt,
       fromCache,
-      refresh,
+      refresh: scheduleRefresh,
       clearCache,
     }),
-    [national, loading, refreshing, error, lastFetchedAt, fromCache, refresh, clearCache],
+    [national, loading, refreshing, error, lastFetchedAt, fromCache, scheduleRefresh, clearCache],
   );
 
   return (
