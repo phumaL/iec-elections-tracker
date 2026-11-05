@@ -2,13 +2,19 @@
 /**
  * Regenerates the small, static reference data bundled with the app.
  *
- * Two IEC files are large but almost entirely static:
+ * Three IEC files are large but almost entirely static:
  *   - PartyList.js           ~470 KB (2,336 parties across all elections)
  *   - HistoryYearsNational   ~1.4 MB (2000-2021, including every municipality)
+ *   - 2021 LiteMapsNational   ~250 KB (all 213 municipalities, completed count)
  *
- * The app only needs the parties contesting 2026 and their national/provincial
- * history, which is a few kilobytes. Bundling that removes two large downloads
- * from the first run and from every cold start.
+ * The app only needs party metadata, national/provincial history and the
+ * municipality list, which is a few kilobytes. Bundling that removes three
+ * large downloads from the first run and from every cold start.
+ *
+ * The 2026 feed itself is sparse: it only contains municipalities and parties
+ * that already have counted votes. The completed 2021 feed is used as the
+ * reference list so the UI can show every municipality, including those still
+ * waiting for their first result.
  *
  * Usage:
  *   node scripts/build-static-data.mjs
@@ -26,6 +32,8 @@ const BASE = 'https://results.elections.org.za/dashboards/lge';
 const NATIONAL = `${BASE}/MapsJason/2026/EEID1887LiteMapsNational.js`;
 const PARTY_LIST = `${BASE}/MapsJason/2016/PartyList.js`;
 const HISTORY = `${BASE}/MapsJason/HistoryYears/HistoryYearsNational.js`;
+/** The 2021 election is complete, so this lists all 213 municipalities. */
+const MUNICIPALITY_REFERENCE = `${BASE}/MapsJason/2021/EEID1091LiteMapsNational.js`;
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -86,12 +94,38 @@ function format(value) {
   return JSON.stringify(value);
 }
 
+function collectMunicipalities(reference) {
+  const provinces = new Map();
+  const municipalities = [];
+
+  for (const province of reference.ProvinceResults ?? []) {
+    provinces.set(province.ProvinceID, province.Province);
+
+    for (const municipality of province.MunicipalityResults ?? []) {
+      municipalities.push([
+        municipality.MunicipalityID,
+        municipality.Municipality,
+        municipality.ProvinceID ?? province.ProvinceID,
+      ]);
+    }
+  }
+
+  municipalities.sort((left, right) =>
+    String(left[1]).localeCompare(String(right[1]), 'en', {
+      sensitivity: 'base',
+    }),
+  );
+
+  return { provinces, municipalities };
+}
+
 async function main() {
   console.log('Reading the live IEC feeds…');
-  const [national, partyList, history] = await Promise.all([
+  const [national, partyList, history, municipalityReference] = await Promise.all([
     getJson(NATIONAL),
     getJson(PARTY_LIST),
     getJson(HISTORY),
+    getJson(MUNICIPALITY_REFERENCE),
   ]);
 
   const ids = collectPartyIds(national);
@@ -122,6 +156,10 @@ async function main() {
       row.iPercentageSupport,
     ]);
 
+  const { provinces, municipalities } = collectMunicipalities(
+    municipalityReference,
+  );
+
   const generatedAt = new Date().toISOString();
 
   const partiesFile = `/**
@@ -129,9 +167,9 @@ async function main() {
  *
  * Regenerate with: node scripts/build-static-data.mjs
  *
- * Only the ${parties.length} parties contesting the 2026 municipal election are
+ * The ${parties.length} parties that have appeared in the 2026 results feed are
  * bundled, rather than all 2,336 entries in the IEC's 470 KB PartyList.js.
- * Generated ${generatedAt}.
+ * Parties are added here as soon as they record a vote somewhere. Generated ${generatedAt}.
  */
 import type { PartyInfo } from '@/types/iec';
 
@@ -167,13 +205,47 @@ export const BUNDLED_PROVINCE_HISTORY: ProvinceHistoryTuple[] = ${format(
   )};
 `;
 
+  const municipalitiesFile = `/**
+ * GENERATED FILE — do not edit by hand.
+ *
+ * Regenerate with: node scripts/build-static-data.mjs
+ *
+ * All ${municipalities.length} municipalities, taken from the completed 2021
+ * feed. The live 2026 feed only includes municipalities that have counted
+ * votes, so this reference list lets the app show the ones still pending.
+ *
+ *   municipality: [municipalityId, name, provinceId]
+ *
+ * Generated ${generatedAt}.
+ */
+
+export type MunicipalityRefTuple = [
+  municipalityId: number,
+  name: string,
+  provinceId: number,
+];
+
+export const PROVINCE_NAMES: Record<number, string> = ${format(
+    Object.fromEntries([...provinces.entries()].sort((left, right) => left[0] - right[0])),
+  )};
+
+export const BUNDLED_MUNICIPALITIES: MunicipalityRefTuple[] = ${format(
+    municipalities,
+  )};
+`;
+
   await Promise.all([
     writeFile(path.join(root, 'src/data/parties.ts'), partiesFile, 'utf8'),
     writeFile(path.join(root, 'src/data/history.ts'), historyFile, 'utf8'),
+    writeFile(
+      path.join(root, 'src/data/municipalities.ts'),
+      municipalitiesFile,
+      'utf8',
+    ),
   ]);
 
   console.log(
-    `Wrote ${parties.length} parties, ${nationalHistory.length} national history rows and ${provinceHistory.length} provincial history rows.`,
+    `Wrote ${parties.length} parties, ${nationalHistory.length} national history rows, ${provinceHistory.length} provincial history rows and ${municipalities.length} municipalities.`,
   );
 }
 

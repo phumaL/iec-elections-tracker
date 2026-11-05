@@ -1,3 +1,7 @@
+import {
+  BUNDLED_MUNICIPALITIES,
+  PROVINCE_NAMES,
+} from '@/data/municipalities';
 import { clampPercent, toFiniteNumber } from '@/lib/format';
 import {
   INDEPENDENT_PARTY_ID,
@@ -11,6 +15,7 @@ import type {
   MunicipalityResult,
   NationalResult,
   PartyResult,
+  ProgressFields,
   ProvinceResult,
   WardResult,
 } from '@/types/iec';
@@ -230,21 +235,106 @@ export function votesCounted(value: {
   return clampPercent(value?.Perc_VDsComplete);
 }
 
+/**
+ * The live 2026 feed only contains municipalities that already have counted
+ * votes. Reference data from the completed 2021 election fills in the rest, so
+ * the UI can show every municipality and mark the ones still waiting.
+ */
+const EMPTY_PROGRESS: ProgressFields = {
+  ProvinceExpected: 0,
+  MunicExpected: 0,
+  WardExpected: 0,
+  VDExpected: 0,
+  SeatsExpected: 0,
+  ProvincesComplete: 0,
+  MuncipalitiesComplete: 0,
+  WardsComplete: 0,
+  VDsComplete: 0,
+  SeatsComplete: 0,
+  Perc_ProvinceComplete: 0,
+  Perc_MunicipalityComplete: 0,
+  Perc_WardsComplete: 0,
+  Perc_VDsComplete: 0,
+  Perc_SeatsComplete: 0,
+  HungCouncils: 0,
+  DeadLockDrawnCouncils: 0,
+  MajorityCouncils: 0,
+  TotalDrawnCouncils: 0,
+  RegPop: 0,
+};
+
+function pendingMunicipality(
+  municipalityId: number,
+  name: string,
+  provinceId: number,
+): MunicipalityResult {
+  return {
+    ...EMPTY_PROGRESS,
+    ProvinceID: provinceId,
+    Province: PROVINCE_NAMES[provinceId] ?? '',
+    MunicipalityID: municipalityId,
+    Municipality: name,
+    WardResults: [],
+    PartyBallotResults: [],
+  };
+}
+
 export function getAllMunicipalities(
   national: NationalResult | null | undefined,
 ): MunicipalityResult[] {
   if (!national) return [];
 
-  return national.ProvinceResults.flatMap((province) =>
-    (province.MunicipalityResults ?? []).map((municipality) => ({
-      ...municipality,
-      Province: municipality.Province || province.Province,
-      ProvinceID: municipality.ProvinceID || province.ProvinceID,
-    })),
-  ).sort((left, right) =>
+  const byId = new Map<number, MunicipalityResult>();
+
+  for (const province of national.ProvinceResults) {
+    for (const municipality of province.MunicipalityResults ?? []) {
+      byId.set(Number(municipality.MunicipalityID), {
+        ...municipality,
+        Province: municipality.Province || province.Province,
+        ProvinceID: municipality.ProvinceID || province.ProvinceID,
+      });
+    }
+  }
+
+  for (const [municipalityId, name, provinceId] of BUNDLED_MUNICIPALITIES) {
+    if (!byId.has(municipalityId)) {
+      byId.set(
+        municipalityId,
+        pendingMunicipality(municipalityId, name, provinceId),
+      );
+    }
+  }
+
+  return [...byId.values()].sort((left, right) =>
     left.Municipality.localeCompare(right.Municipality, 'en', {
       sensitivity: 'base',
     }),
+  );
+}
+
+export function getMunicipalitiesForProvince(
+  national: NationalResult | null | undefined,
+  provinceId: number | string,
+): MunicipalityResult[] {
+  return getAllMunicipalities(national).filter(
+    (municipality) => String(municipality.ProvinceID) === String(provinceId),
+  );
+}
+
+/** True once a municipality has at least one counted party result. */
+export function hasMunicipalityResults(
+  municipality: MunicipalityResult,
+): boolean {
+  return (municipality.PartyBallotResults?.length ?? 0) > 0;
+}
+
+/** How many municipalities already have results in the live feed. */
+export function municipalitiesReporting(
+  national: NationalResult | null | undefined,
+): number {
+  return (national?.ProvinceResults ?? []).reduce(
+    (total, province) => total + (province.MunicipalityResults?.length ?? 0),
+    0,
   );
 }
 
